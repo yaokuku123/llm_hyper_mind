@@ -1,12 +1,36 @@
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
+from langchain_community.llms.ollama import Ollama
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_community.embeddings import SentenceTransformerEmbeddings
+import os
 
 load_dotenv()
+
+
+def get_model(use_model: str = "openai"):
+    if use_model == "openai":
+        return ChatOpenAI()
+    elif use_model == "zhipu":
+        return ChatOpenAI(temperature=0.95,
+                          model="glm-4-plus",
+                          openai_api_key=os.environ["ZHIPU_API_KEY"],
+                          openai_api_base="https://open.bigmodel.cn/api/paas/v4/")
+    elif use_model == "qwen":
+        return Ollama(model="qwen:1.8b")
+    raise RuntimeError()
+
+
+def get_embeddings_model(use_embeddings_model: str = "openai"):
+    if use_embeddings_model == "openai":
+        return OpenAIEmbeddings()
+    elif use_embeddings_model == "huggingface":
+        return SentenceTransformerEmbeddings(model_name="BAAI/bge-base-zh")
+
 
 documents = [
     Document(page_content="狗是伟大的伴侣，以其忠诚和友好而闻名。", metadata={"source": "哺乳动物宠物文档"}),
@@ -17,7 +41,7 @@ documents = [
 ]
 
 if __name__ == '__main__':
-    model = ChatOpenAI()
+    model = get_model(use_model="zhipu")
     prompt_template = ChatPromptTemplate.from_messages([
         HumanMessagePromptTemplate.from_template("""
             请使用提供的上下文回答以下的问题：
@@ -28,8 +52,8 @@ if __name__ == '__main__':
     ])
     parser = StrOutputParser()
     # 构建RAG向量数据库（内存）
-    vector_store = Chroma.from_documents(documents=documents, embedding=OpenAIEmbeddings())
-
+    vector_store = Chroma.from_documents(documents=documents,
+                                         embedding=get_embeddings_model(use_embeddings_model="huggingface"))
     # 从向量数据库中匹配top2相似的Document，分数越低，越相似
     # 示例：
     # [

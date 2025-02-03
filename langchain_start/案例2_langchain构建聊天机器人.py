@@ -7,6 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from langchain_core.runnables import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
 from langchain_community.chat_message_histories import ChatMessageHistory
+import os
 
 load_dotenv()
 
@@ -38,9 +39,21 @@ def get_session_history(session_id: str):
     return stores[session_id]
 
 
+def get_model(use_model: str = "openai"):
+    if use_model == "openai":
+        return ChatOpenAI()
+    elif use_model == "zhipu":
+        return ChatOpenAI(temperature=0.95,
+                          model="glm-4-plus",
+                          openai_api_key=os.environ["ZHIPU_API_KEY"],
+                          openai_api_base="https://open.bigmodel.cn/api/paas/v4/")
+    elif use_model == "qwen":
+        return Ollama(model="qwen:1.8b")
+    raise RuntimeError()
+
+
 if __name__ == '__main__':
-    model = ChatOpenAI()
-    # model = Ollama(model="qwen:1.8b")
+    model = get_model(use_model="zhipu")
     prompt_template = ChatPromptTemplate.from_messages([
         SystemMessagePromptTemplate.from_template("你是一个乐于助人的助手。用{language}尽可能的回答所有问题"),
         MessagesPlaceholder(variable_name="history"),
